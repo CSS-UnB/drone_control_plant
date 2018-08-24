@@ -9,76 +9,78 @@
 //SCL  -  A5
 //INT - port-2
 
+#include <Arduino_FreeRTOS.h>
 #include <Wire.h>
 #include <Servo.h>
 #include <PID_v1.h>
 
 
-//Declaring some global variables
+// GLOBAL VARIABLES
+// orientation
+int offset_samples = 1000;
 int gyro_x, gyro_y, gyro_z;
 long gyro_x_cal, gyro_y_cal, gyro_z_cal;
 boolean set_gyro_angles;
-
 long acc_x, acc_y, acc_z, acc_total_vector;
-float angle_roll_acc, angle_pitch_acc, angle_pitch_acc2;
-
-
+float angle_roll_acc, angle_pitch_acc;
 float angle_pitch, angle_roll;
-int angle_pitch_buffer, angle_roll_buffer;
 float angle_pitch_output, angle_roll_output;
-
-long loop_timer;
 int temp;
 
+// motor
 Servo ServoMotor;
 int pino_motor = 9;
-int valor;
-int valor_max = 70;
-int valor_min = 52;
-int intended_position = 0; //implementar
-int count = 0;
-int inc = 1;
+int pwm;
+int pwm_max = 70;
+int pwm_min = 52;
 
-int digitalCheck = 0;
+// parameter identification
+//int count = 0;
+//int inc = 1;
 
-
+// pid controller
 double Setpoint, Input, Output;
 double Kp = 0.03, Ki = 0.02, Kd = 0.02; //posição 1
-double Offset = 57;
-
+double Offset = 57; //implementar mudança dinamica do offset
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, REVERSE);
 
+unsigned long loop_timer;
+
 void setup() {
+  Serial.begin(115200);
+  //while (!Serial)
+  
+  Serial.println("Setting MPU registers");
   Wire.begin();                                                        //Start I2C as master
   setup_mpu_6050_registers();                                          //Setup the registers of the MPU-6050
-  for (int cal_int = 0; cal_int < 2000 ; cal_int ++) {                 //Read the raw acc and gyro data from the MPU-6050 for 1000 times
+  
+  // calculates mpu offset
+  Serial.println("Calculating MPU offset");
+  for (int cal_int = 0; cal_int < offset_samples ; cal_int ++) {       //Read the raw acc and gyro data from the MPU-6050 for 1000 times
     read_mpu_6050_data();
     gyro_x_cal += gyro_x;                                              //Add the gyro x offset to the gyro_x_cal variable
     gyro_y_cal += gyro_y;                                              //Add the gyro y offset to the gyro_y_cal variable
     gyro_z_cal += gyro_z;                                              //Add the gyro z offset to the gyro_z_cal variable
     delay(3);                                                          //Delay 3us to have 250Hz for-loop
   }
+  gyro_x_cal /= offset_samples;
+  gyro_y_cal /= offset_samples;
+  gyro_z_cal /= offset_samples;
+  delay(1000); // conferir
 
-  // divide by 2000 to get avarage offset
-  gyro_x_cal /= 2000;
-  gyro_y_cal /= 2000;
-  gyro_z_cal /= 2000;
-  Serial.begin(115200);
-  loop_timer = micros();                                               //Reset the loop timer
-  Serial.println("Set");
-
-  delay(2000);
+  Serial.println("Setting Motor");
   ServoMotor.attach(pino_motor);
   ServoMotor.write(1000); // não lembro o por que
   delay(5000);
-  valor = 50;
+  pwm = 50;
 
   //PID
   Setpoint = 0;
   myPID.SetMode(AUTOMATIC);
   myPID.SetOutputLimits(-100, 100);
 
-  count = 0;
+  Serial.println("Go!");
+  loop_timer = micros();
 
 }
 
@@ -127,31 +129,31 @@ void loop() {
   //PID1
   //Serial.println(Output);
   //Serial.println(Output);
-  valor = Offset + (int)Output;
-  if (valor < valor_min) {
-    ServoMotor.write(valor_min);
-    Serial.println(valor_min);
-  } else if(valor > valor_max) {
-    ServoMotor.write(valor_max);
-    Serial.println(valor_max);
+  pwm = Offset + (int)Output;
+  if (pwm < pwm_min) {
+    ServoMotor.write(pwm_min);
+    Serial.println(pwm_min);
+  } else if (pwm > pwm_max) {
+    ServoMotor.write(pwm_max);
+    Serial.println(pwm_max);
   } else {
-    ServoMotor.write(valor);
-    Serial.println(valor);
+    ServoMotor.write(pwm);
+    Serial.println(pwm);
   }
 
-/*
-    if(count<1500){
-    ServoMotor.write(valor);
-    count++;
-    }else{
-    Serial.print(valor);
-    Serial.print(' ');
-    Serial.println(angle_pitch);
-    if(valor > 100) inc = -1;
-    valor += inc;
-    count = 0;
-    }
-*/
+  /*
+      if(count<1500){
+      ServoMotor.write(pwm);
+      count++;
+      }else{
+      Serial.print(pwm);
+      Serial.print(' ');
+      Serial.println(angle_pitch);
+      if(pwm > 100) inc = -1;
+      pwm += inc;
+      count = 0;
+      }
+  */
   while (micros() - loop_timer < 4000);                                //Wait until the loop_timer reaches 4000us (250Hz) before starting the next loop
   loop_timer = micros();//Reset the loop timer
 
