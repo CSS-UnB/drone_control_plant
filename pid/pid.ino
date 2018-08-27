@@ -14,6 +14,9 @@
 #include <Servo.h>
 #include <PID_v1.h>
 
+#define DEBUG 1
+#define IDENTIFY 1
+
 
 // GLOBAL VARIABLES
 // orientation
@@ -49,13 +52,16 @@ unsigned long loop_timer;
 void setup() {
   Serial.begin(115200);
   //while (!Serial)
-  
-  Serial.println("Setting MPU registers");
+  #ifdef DEBUG
+    Serial.println("Setting MPU registers");
+  #endif
   Wire.begin();                                                        //Start I2C as master
   setup_mpu_6050_registers();                                          //Setup the registers of the MPU-6050
   
   // calculates mpu offset
-  Serial.println("Calculating MPU offset");
+  #ifdef DEBUG
+    Serial.println("Calculating MPU offset");
+  #endif
   for (int cal_int = 0; cal_int < offset_samples ; cal_int ++) {       //Read the raw acc and gyro data from the MPU-6050 for 1000 times
     read_mpu_6050_data();
     gyro_x_cal += gyro_x;                                              //Add the gyro x offset to the gyro_x_cal variable
@@ -68,7 +74,9 @@ void setup() {
   gyro_z_cal /= offset_samples;
   delay(1000); // conferir
 
-  Serial.println("Setting Motor");
+  #ifdef DEBUG
+    Serial.println("Setting Motor");
+  #endif
   ServoMotor.attach(pino_motor);
   ServoMotor.write(1000); // não lembro o por que
   delay(5000);
@@ -79,7 +87,9 @@ void setup() {
   myPID.SetMode(AUTOMATIC);
   myPID.SetOutputLimits(-100, 100);
 
-  Serial.println("Go!");
+  #ifdef DEBUG
+    Serial.println("Go!");
+  #endif
   loop_timer = micros();
 
 }
@@ -131,15 +141,19 @@ void loop() {
   //Serial.println(Output);
   pwm = Offset + (int)Output;
   if (pwm < pwm_min) {
-    ServoMotor.write(pwm_min);
-    Serial.println(pwm_min);
+    pwm = pwm_min;
+    ServoMotor.write(pwm);
   } else if (pwm > pwm_max) {
+    pwm = pwm_max;
     ServoMotor.write(pwm_max);
-    Serial.println(pwm_max);
   } else {
     ServoMotor.write(pwm);
-    Serial.println(pwm);
   }
+
+  Serial.println(pwm);
+  #ifdef IDENTIFY
+    Serial.println(angle_pitch);
+  #endif
 
   /*
       if(count<1500){
@@ -154,6 +168,8 @@ void loop() {
       count = 0;
       }
   */
+  
+  //Serial.println(micros() - loop_timer < 4000);                        // Uncomment to monitor loop execution time
   while (micros() - loop_timer < 4000);                                //Wait until the loop_timer reaches 4000us (250Hz) before starting the next loop
   loop_timer = micros();//Reset the loop timer
 
