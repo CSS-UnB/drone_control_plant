@@ -1,33 +1,39 @@
 import serial
 
-portPath ='/dev/ttyUSB0'
+portPath ='/dev/ttyUSB1'
 baud = 115200
-file_name = "data.txt"
+data_file = "data.txt"
+prbs_file = "prbs.txt"
 count = 0
-number_of_samples = 1000
+number_of_samples = 250
 
 ser = serial.Serial(portPath, baud)
-writer = open(file_name, 'w')
 
-line = ser.readline()
-while line == -1:
-	pass
+# reads file to list
+prbs = open(prbs_file, 'r')
+prbs_list = prbs.read().split()[:number_of_samples]
+prbs.close()
+print('len(prbs_list) = ' + str(len(prbs_list)))
 
-print(line)
+# waits to talk to arduino
+print(ser.readline())
 
-raw_input("Press Enter to continue...")
+raw_input("Press Enter to send PRBS data...")
+# sends list length and then each element
+for sample in prbs_list:
+	ser.write(sample)
+	print(ser.readline())
 
-ser.write('1')
+# waits for received confirmation
+print(ser.readline())
 
-while(count < number_of_samples):
-	line = ser.readline()
-	print(line)
-	if line != 'done':
-		writer.write(line)
-	else:
-		break
-	count += 1
+# starts communication
+for sample in prbs_list:
+	print(ser.readline())
 
 ser.close()
-writer.close()
+'''
+writer = open(data_file, 'w')
 
+writer.close()
+'''

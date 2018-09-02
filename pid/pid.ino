@@ -9,6 +9,7 @@
 //SCL  -  A5
 //INT - port-2
 
+#include <Arduino_FreeRTOS.h>
 #include <Wire.h>
 #include <Servo.h>
 #include <PID_v1.h>
@@ -46,6 +47,10 @@ double Kp = 0.03, Ki = 0.02, Kd = 0.02; //posição 1
 double Offset = 57; //implementar mudança dinamica do offset
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, REVERSE);
 
+// identification
+char data_in[2500]; 
+
+// timer
 unsigned long loop_timer;
 
 void setup() {
@@ -89,8 +94,19 @@ void setup() {
 #ifdef DEBUG
   Serial.println("Go!");
 #endif
+#ifdef IDENTIFY
   Serial.println("Ready");
-  while (Serial.read() == -1);
+  int data_len = Serial.read();
+  int count = 0;
+  while (data_len == -1){ // implementar alocação dinamica para vetores de tamanhos diferentes
+    data_len = Serial.read();
+  }
+  while(count < /*data_len*/2500 ){
+    data_in[count]= Serial.read();
+    count++;
+  }
+  
+#endif
   loop_timer = micros();
 
 }
