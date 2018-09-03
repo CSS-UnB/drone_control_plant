@@ -51,7 +51,7 @@ double Offset = 57; //implementar mudança dinamica do offset
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, REVERSE);
 
 // identification
-const int data_len = 250;
+const int data_len = 200;
 char data_in[data_len];
 
 // timer
@@ -200,8 +200,8 @@ void TaskOrientationControl(void *pvParameters){
     
     #ifdef IDENTIFY
       if(count < data_len){
-        //Serial.println(angle_pitch);
-        Serial.println(((int)data_in[count]-'0') * (pwm_max - pwm_min) + pwm_min);
+        //Serial.println(((int)data_in[count]-'0') * (pwm_max - pwm_min) + pwm_min);
+        Serial.println(angle_pitch);
         ServoMotor.write(((int)data_in[count]-'0') * (pwm_max - pwm_min) + pwm_min);
         count++;  
       }

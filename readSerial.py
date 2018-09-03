@@ -1,11 +1,12 @@
 import serial
 
-portPath ='/dev/ttyUSB1'
+portPath ='/dev/ttyUSB0'
 baud = 115200
 data_file = "data.txt"
 prbs_file = "prbs.txt"
+orientation_file = "orientation.txt"
 count = 0
-number_of_samples = 250
+number_of_samples = 200
 
 ser = serial.Serial(portPath, baud)
 
@@ -14,6 +15,9 @@ prbs = open(prbs_file, 'r')
 prbs_list = prbs.read().split()[:number_of_samples]
 prbs.close()
 print('len(prbs_list) = ' + str(len(prbs_list)))
+
+# opens file to write
+orientation = open(orientation_file, 'w')
 
 # waits to talk to arduino
 print(ser.readline())
@@ -29,11 +33,8 @@ print(ser.readline())
 
 # starts communication
 for sample in prbs_list:
-	print(ser.readline())
+	#print(ser.readline())
+	orientation.write(ser.readline())
 
 ser.close()
-'''
-writer = open(data_file, 'w')
-
-writer.close()
-'''
+orientation.close()
