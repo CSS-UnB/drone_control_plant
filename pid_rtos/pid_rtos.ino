@@ -21,7 +21,9 @@ void TaskOrientationControl(void *pvParameters);
 void TaskReadWriteData(void *pvParameters);
 
 
-// GLOBAL VARIABLES
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////// GLOBAL VARIABLES ////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // orientation ******************************************************
 int offset_samples = 1000;
 int gyro_x, gyro_y, gyro_z;
@@ -38,8 +40,9 @@ int temp;
 Servo ServoMotor;
 int pino_motor = 9;
 int pwm;
-int pwm_max = 60;
-int pwm_min = 58;
+const int pwm_max = 70;
+const int pwm_min = 50;
+int pwm_limits_id[2];
 
 // parameter identification
 int count = 0;
@@ -56,7 +59,10 @@ char data_in[data_len];
 
 // timer
 unsigned long loop_timer;
-//*********************************************************************** SETUP ******************************************************************************
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////// SETUP //////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 void setup() {
   xTaskCreate(
       TaskOrientationControl
@@ -120,10 +126,21 @@ void setup() {
 #endif
 #ifdef IDENTIFY
   Serial.println("Ready");
-  while(Serial.available()==0);
+  while(count < 2){
+    if(Serial.available()>0){
+      pwm_limits_id[count] = (int)Serial.read();
+      Serial.println(pwm_limits_id[count]);
+      count++;
+    }
+  }
+  count = 0;
+  // check if limits received are within the limits allowed 
+  if(pwm_limits_id[0] > pwm_max) pwm_limits_id[0] = pwm_max;
+  if(pwm_limits_id[1] < pwm_min) pwm_limits_id[1] = pwm_min;
+  
   while(count <  data_len){
     if(Serial.available()>0){
-      data_in[count] = (Serial.read());
+      data_in[count] = Serial.read();
       Serial.println(data_in[count]);
       count++;  
     }
@@ -138,6 +155,10 @@ void loop() {
   
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////// TASKS //////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void TaskOrientationControl(void *pvParameters){
   #ifdef DEBUG
@@ -202,7 +223,7 @@ void TaskOrientationControl(void *pvParameters){
       if(count < data_len){
         //Serial.println(((int)data_in[count]-'0') * (pwm_max - pwm_min) + pwm_min);
         Serial.println(angle_pitch);
-        ServoMotor.write(((int)data_in[count]-'0') * (pwm_max - pwm_min) + pwm_min);
+        ServoMotor.write(((int)data_in[count]-'0') * (pwm_limits_id[0] - pwm_limits_id[1]) + pwm_limits_id[1]);
         count++;  
       }
     #else
@@ -258,6 +279,10 @@ void TaskReadWriteData(void *pvParameters){
     vTaskDelayUntil( &xLastWakeTime, xFrequency );    
   }
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////// IMU ///////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup_mpu_6050_registers() {
   //Activate the MPU-6050
